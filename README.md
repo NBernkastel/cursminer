@@ -1,1 +1,1 @@
-Cursed
+Version 1.1
