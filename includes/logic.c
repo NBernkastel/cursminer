@@ -7,14 +7,58 @@ void open_logic(int i, int j) { // рекурсивная функция открытия клеток
                 if (((i + l) < FLENGHT && (j + k) < FHIGHT) && ((i + l) >= 0 && (j + k) >= 0))
                     open_logic(i + l, j + k);
 }
-void logic( int mincounter) { // логика
+void null() {
+    for (int i = 0; i < FLENGHT; i++) { // закрывает все квадраты
+        for (int j = 0; j < FHIGHT; j++) {
+            field[i][j].is_open = 0;
+            field[i][j].min = 0;
+            field[i][j].bombs_around = 0;
+            field[i][j].color = 1;
+            field[i][j].flag = 0;
+        }
+    }
+}
+void startup(int a, int b) { // старт игры
+    null();
+    flag_stay = 0;
+    int k = 0;
+    srand(time(NULL));
+    while (k < mincounter) { // раставляет мины
+        int i;
+        int j;
+        i = 0 + rand() % FLENGHT;
+        j = 0 + rand() % FHIGHT;
+        if (field[i][j].min != 1 && (i != a || j != b)) {
+            field[i][j].min = 1;
+            k++;
+        }
+    }
+    for (int i = 0; i < FLENGHT; i++) { // растановка значений бомб вокруг клетки
+        for (int j = 0; j < FHIGHT; j++) {
+            int bombs = 0;
+            for (int l = i - 1; l < i + 2; l++) {
+                for (int k = j - 1; k < j + 2; k++) {
+                    if ((l >= 0 && k >= 0) && (l < FLENGHT && k < FHIGHT)) {
+                        if (field[l][k].min == 1)
+                            bombs++;
+                    }
+                }
+            }
+            field[i][j].bombs_around = bombs;
+            if (field[i][j].min == 1)
+                field[i][j].bombs_around = -1;
+        }
+    }
+}
+void logic() { // логика
     // маштабируемость
+    int width, height;
+    glfwGetWindowSize(window, &width, &height); // получение размеров окна
     float aspect = (float)width / height; // соотношение ширины к высоте
     glViewport(0, 0, height, height); // изменение вьюпорта относительно размера окна
     glfwGetCursorPos(window, &xpos, &ypos); // захват курсора 
     glfwSetMouseButtonCallback(window, mouse_button_callback); // захват нажатия на мышь 
     glfwSetKeyCallback(window, key_callback); // захват нажатия на клавиши
-    glfwGetWindowSize(window, &width, &height); // получение размеров окна
     // маштабируемость
     xpos /= (width / aspect);// приведение в относительные координаты
     ypos /= height; // приведение в относительные координаты
@@ -28,8 +72,11 @@ void logic( int mincounter) { // логика
                         open_logic(i, j);
                     if (field[i][j].min == 1)
                         gameover = 1;
-                    if (gamemode != 0 && m_press_first == 0)
+                    if (gamemode != 0 && m_press_first == 0 && gamemode != 4) {
                         m_press_first = 1;
+                        startup(i,j,mincounter);
+                        open_logic(i, j);
+                    }
                 }
                 if (m_press == 2) { // ставим флаг
                     if (field[i][j].flag == 0) {
@@ -59,6 +106,23 @@ void logic( int mincounter) { // логика
     }
     m_press = 0; // сброс нажатия мыши
 }
+void save() {
+    FILE* fp = fopen("save.bin", "wb");
+    fwrite(&FLENGHT, sizeof(int), 1, fp);
+    fwrite(&FHIGHT, sizeof(int), 1, fp);
+    fwrite(&mincounter, sizeof(int), 1, fp);
+    fwrite(&sdwg, sizeof(float), 1, fp);
+    fwrite(&flag_stay, sizeof(int), 1, fp);
+    for (int i = 0; i < FLENGHT; i++)
+        for (int j = 0; j < FHIGHT; j++) {
+            fwrite(&field[i][j].is_open, sizeof(int), 1, fp);
+            fwrite(&field[i][j].min, sizeof(int), 1, fp);
+            fwrite(&field[i][j].flag, sizeof(int), 1, fp);
+            fwrite(&field[i][j].bombs_around, sizeof(int), 1, fp);
+        }
+    fclose(fp);
+    exit(0);
+}
 void saveload() { // загрузка сохрания
     FILE* fp = fopen("save.bin", "rb"); // открытие файла в поток
     fread(&FLENGHT, sizeof(int), 1, fp);
@@ -76,6 +140,7 @@ void saveload() { // загрузка сохрания
     fclose(fp); // закрытие файла
 }
 void logic_m() { // логика меню
+    int width, height;
     glfwGetCursorPos(window, &xpos, &ypos); // захват курсора 
     glfwSetMouseButtonCallback(window, mouse_button_callback); // захват нажатия на мышь 
     glfwGetWindowSize(window, &width, &height);
@@ -117,66 +182,31 @@ void logic_m() { // логика меню
     }
     m_press = 0;
 }
-void startup() { // старт игры
-    printf("YES\n");
-    for (int i = 0; i < FLENGHT; i++) { // закрывает все квадраты
+void helpmin() {
+    for (int i = 0; i < FLENGHT; i++) {
         for (int j = 0; j < FHIGHT; j++) {
-            field[i][j].is_open = 0;
-            field[i][j].min = 0;
-            field[i][j].bombs_around = 0;
-            field[i][j].color = 1;
-            field[i][j].flag = 0;
-        }
-    }
-    flag_stay = 0;
-    int k = 0;
-    srand(time(NULL));
-    while (k < mincounter) { // раставляет мины
-        int i;
-        int j;
-        i = 0 + rand() % (FLENGHT - 2);
-        j = 0 + rand() % (FHIGHT - 2);
-        if (field[i][j].min != 1) {
-            field[i][j].min = 1;
-            k++;
-        }
-    }
-    for (int i = 0; i < FLENGHT - 1; i++) { // растановка значений бомб вокруг клетки
-        for (int j = 0; j < FHIGHT - 1; j++) {
-            int bombs = 0;
-            for (int l = i - 1; l < i + 2; l++) {
-                for (int k = j - 1; k < j + 2; k++) {
-                    if (field[l][k].min == 1)
-                        bombs++;
-                }
-            }
-            field[i][j].bombs_around = bombs;
-            if (field[i][j].min == 1)
-                field[i][j].bombs_around = -1;
-        }
-    }
-}
-void help() { // функция подсказки (было бы круто если бы работала)
-    for (int i = 0; i < FLENGHT - 1; i++) {
-        for (int j = 0; j < FHIGHT - 1; j++) {
-            int f = 0;
-            for (int l = i - 1; l < i + 2; l++) {
-                for (int k = j - 1; k < j + 2; k++) {
-                    if (field[l][k].flag == 1)
-                        f++;
-                }
-            }
-            field[i][j].flag_around = f;
-            if (field[i][j].min == 1)
-                field[i][j].flag_around = -1;
-        }
-    }
-    for (int i = 0; i < FLENGHT-1; i++) {
-        for (int j = 0; j < FHIGHT-1; j++) {
-            if (field[i][j].bombs_around < field[i][j].flag_around) {
+            if (field[i][j].is_open == 1) {
+                int close = 0;
                 for (int l = i - 1; l < i + 2; l++) {
                     for (int k = j - 1; k < j + 2; k++) {
+                        if ((l >= 0 && k >= 0) && (l < FLENGHT && k < FHIGHT)) {
+                            if (field[l][k].is_open == 0)
+                                close++;
+                        }
+                    }
+                }
+                field[i][j].close = close;
+            }
+        }
+    }
+    for (int i = 0; i < FLENGHT; i++) {
+        for (int j = 0; j < FHIGHT; j++) {
+            if (field[i][j].close == field[i][j].bombs_around && field[i][j].is_open == 1 && field[i][j].bombs_around != 0) {
+                for (int l = i - 1; l < i + 2; l++) {
+                    for (int k = j - 1; k < j + 2; k++) {
+                        if ((l >= 0 && k >= 0) && (l < FLENGHT && k < FHIGHT)) {
                             field[l][k].color = 1.5;
+                        }
                     }
                 }
             }
